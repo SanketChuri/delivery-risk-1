@@ -1,0 +1,16 @@
+pandas
+streamlit
+groq
+python-dotenv
+langsmith
+
+# Create Virtual Enviornment
+
+# create .env file which has the following
+
+# GROQ_API_KEY=<API KEY>
+# LANGSMITH_TRACING=true
+# LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+# LANGSMITH_API_KEY=<KEY>
+# LANGSMITH_PROJECT="PROJECT NAME"
+
