@@ -1,0 +1,16 @@
+job_id,driver_id,Scheduled Time,actual_time,Priority,Status,traffic_level
+J001,D01,35,50,HIGH,in_transit,heavy
+J002,D02,20,18,medium,IN_TRANSIT,low
+J003,D03,40,65,High,in_transit,HEAVY
+J004,D04,25,,low,assigned,medium
+J005,D05,30,29,Medium,Delivered,low
+J006,D06,45,70,HIGH,in_transit,heavy
+J007,D07,50,50,low,assigned,medium
+J008,D08,60,abc,medium,in_transit,low
+J009,D09,40,90,HIGH,in_transit,heavy
+J010,D10,30,,medium,in_transit,medium
+J011,D11,25,20,LOW,delivered,low
+J012,D12,,55,high,in_transit,heavy
+J013,D13,35,35,medium,assigned,medium
+J014,D14,45,100,HIGH,in_transit,heavy
+J015,D15,20,18,low,in_transit,low
