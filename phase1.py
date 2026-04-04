@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 
@@ -13,21 +14,70 @@ class AlertConfig:
     urgent_delay_minutes: int = 30
 
 
-def attach_driver_telemetry(df: pd.DataFrame) -> pd.DataFrame:
-    """Phase-1 placeholder for real-time location / heartbeat data.
+def _normalize_telemetry_columns(telemetry_df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize accepted telemetry column names to driver_lat/driver_lon."""
+    out = telemetry_df.copy()
+    rename_map = {
+        'lat': 'driver_lat',
+        'latitude': 'driver_lat',
+        'lon': 'driver_lon',
+        'lng': 'driver_lon',
+        'longitude': 'driver_lon',
+        'timestamp': 'last_telemetry_utc',
+    }
+    out.columns = [c.strip().lower() for c in out.columns]
+    out = out.rename(columns={k: v for k, v in rename_map.items() if k in out.columns})
 
-    In production this should join against a live driver telemetry source.
-    For now, we attach stable synthetic coordinates so the dashboard can
-    demonstrate the operational workflow.
-    """
+    required = {'driver_id', 'driver_lat', 'driver_lon'}
+    missing = required - set(out.columns)
+    if missing:
+        raise ValueError(f"Telemetry file missing required columns: {sorted(missing)}")
+
+    if 'last_telemetry_utc' not in out.columns:
+        out['last_telemetry_utc'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
+
+    out = out[['driver_id', 'driver_lat', 'driver_lon', 'last_telemetry_utc']].copy()
+    out['driver_id'] = out['driver_id'].astype(str).str.strip()
+    out['driver_lat'] = pd.to_numeric(out['driver_lat'], errors='coerce')
+    out['driver_lon'] = pd.to_numeric(out['driver_lon'], errors='coerce')
+    out = out.dropna(subset=['driver_lat', 'driver_lon'])
+    return out
+
+
+def _fallback_synthetic_telemetry(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
-
-    # deterministic pseudo-coordinates by driver id for demo dashboards
     driver_nums = out['driver_id'].str.extract(r"(\d+)", expand=False).fillna('0').astype(int)
     out['driver_lat'] = 40.0 + (driver_nums % 20) * 0.01
     out['driver_lon'] = -74.0 - (driver_nums % 20) * 0.01
     out['last_telemetry_utc'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
     return out
+
+
+def attach_driver_telemetry(df: pd.DataFrame, telemetry_path: str | None = None) -> pd.DataFrame:
+    """Attach driver locations.
+
+    If telemetry_path exists, use real coordinates from that file.
+    Otherwise, fallback to deterministic synthetic coordinates.
+    """
+    out = df.copy()
+
+    if telemetry_path:
+        path = Path(telemetry_path)
+        if path.exists():
+            telemetry_df = pd.read_csv(path)
+            telemetry_df = _normalize_telemetry_columns(telemetry_df)
+            out['driver_id'] = out['driver_id'].astype(str).str.strip()
+            out = out.merge(telemetry_df, how='left', on='driver_id')
+
+            needs_fallback = out['driver_lat'].isna() | out['driver_lon'].isna()
+            if needs_fallback.any():
+                fallback = _fallback_synthetic_telemetry(out.loc[needs_fallback, ['driver_id']].copy())
+                out.loc[needs_fallback, 'driver_lat'] = fallback['driver_lat'].values
+                out.loc[needs_fallback, 'driver_lon'] = fallback['driver_lon'].values
+                out.loc[needs_fallback, 'last_telemetry_utc'] = fallback['last_telemetry_utc'].values
+            return out
+
+    return _fallback_synthetic_telemetry(out)
 
 
 def attach_external_signals(df: pd.DataFrame) -> pd.DataFrame:
@@ -65,9 +115,13 @@ def attach_alerts(df: pd.DataFrame, config: AlertConfig | None = None) -> pd.Dat
     return out
 
 
-def build_phase1_operational_view(df: pd.DataFrame, config: AlertConfig | None = None) -> pd.DataFrame:
+def build_phase1_operational_view(
+    df: pd.DataFrame,
+    config: AlertConfig | None = None,
+    telemetry_path: str | None = None,
+) -> pd.DataFrame:
     """Single entrypoint used by CLI and dashboard for phase-1 operations."""
-    out = attach_driver_telemetry(df)
+    out = attach_driver_telemetry(df, telemetry_path=telemetry_path)
     out = attach_external_signals(out)
     out = attach_alerts(out, config=config)
     return out

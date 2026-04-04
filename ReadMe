@@ -18,3 +18,8 @@ python main.py
 
 Run Phase-1 dashboard:
 streamlit run app.py
+
+Optional real map telemetry source (used by default path `data/driver_locations.csv`):
+Required columns: driver_id + lat/lon (or latitude/longitude) + optional timestamp.
+
+In Streamlit, open **Sidebar → Map Controls → Map mode → World (global view)** to see a world map.
