@@ -22,6 +22,6 @@ for job in jobs:
     })
 
 df = pd.DataFrame(data)
-df.to_csv("data/dirtyFile.csv", index=False)
+df.to_csv("data/orders_with_locations.csv", index=False)
 
 print("Data generated.")

@@ -39,6 +39,15 @@ def assign_risk_level(score):
 
 def recommend_action(row):
     if row['risk_level'] == "High":
+        status = str(row.get('status', '')).lower()
+        delay = row.get('delay', 0)
+        is_picked_and_delayed = (status in {
+            'picked_up',
+            'in_transit',
+            'delayed',
+        }) and (delay > 0)
+        if is_picked_and_delayed:
+            return "Expedite current driver and proactively notify customer"
         return "Reassign driver or notify operations immediately"
     elif row['risk_level'] == "Medium":
         return "Monitor closely and prepare contingency"
