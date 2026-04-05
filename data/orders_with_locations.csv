@@ -1,0 +1,11 @@
+job_id,driver_id,pickup_lat,pickup_lon,drop_lat,drop_lon,scheduled_time,actual_time,priority,traffic_level,status
+J001,D01,51.5074,-0.1278,51.5155,-0.0722,30,45,high,heavy,delayed
+J002,D02,51.5098,-0.1180,51.5033,-0.1195,25,28,medium,medium,on_route
+J003,D03,51.5155,-0.0722,51.5220,-0.1040,40,60,high,heavy,delayed
+J004,D04,51.5033,-0.1195,51.4950,-0.1420,20,22,low,low,on_route
+J005,D05,51.4995,-0.1357,51.5142,-0.0931,35,50,medium,heavy,delayed
+J006,D06,51.5142,-0.0931,51.5300,-0.0870,30,32,low,medium,on_route
+J007,D07,51.5220,-0.1040,51.5074,-0.1278,45,70,high,heavy,delayed
+J008,D08,51.5300,-0.0870,51.5098,-0.1180,25,27,medium,low,on_route
+J009,D09,51.4950,-0.1420,51.4995,-0.1357,15,18,low,low,delivered
+J010,D10,51.5100,-0.1000,51.5200,-0.1100,30,55,high,heavy,delayed

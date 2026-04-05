@@ -37,23 +37,32 @@ def _normalize_telemetry_columns(telemetry_df: pd.DataFrame) -> pd.DataFrame:
         out['last_telemetry_utc'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
 
     out = out[['driver_id', 'driver_lat', 'driver_lon', 'last_telemetry_utc']].copy()
-    out['driver_id'] = out['driver_id'].astype(str).str.strip()
+    out['driver_id'] = out['driver_id'].astype(str).str.strip().str.lower()
     out['driver_lat'] = pd.to_numeric(out['driver_lat'], errors='coerce')
     out['driver_lon'] = pd.to_numeric(out['driver_lon'], errors='coerce')
     out = out.dropna(subset=['driver_lat', 'driver_lon'])
     return out
 
 
-def _fallback_synthetic_telemetry(df: pd.DataFrame) -> pd.DataFrame:
+def _fallback_synthetic_telemetry(df: pd.DataFrame, region: str = 'uk') -> pd.DataFrame:
     out = df.copy()
     driver_nums = out['driver_id'].str.extract(r"(\d+)", expand=False).fillna('0').astype(int)
-    out['driver_lat'] = 40.0 + (driver_nums % 20) * 0.01
-    out['driver_lon'] = -74.0 - (driver_nums % 20) * 0.01
+    if region.lower() == 'us':
+        base_lat, base_lon = 40.0, -74.0
+    else:
+        # Default to London area so fallback is UK-friendly.
+        base_lat, base_lon = 51.5074, -0.1278
+    out['driver_lat'] = base_lat + (driver_nums % 20) * 0.01
+    out['driver_lon'] = base_lon - (driver_nums % 20) * 0.01
     out['last_telemetry_utc'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
     return out
 
 
-def attach_driver_telemetry(df: pd.DataFrame, telemetry_path: str | None = None) -> pd.DataFrame:
+def attach_driver_telemetry(
+    df: pd.DataFrame,
+    telemetry_path: str | None = None,
+    fallback_region: str = 'uk',
+) -> pd.DataFrame:
     """Attach driver locations.
 
     If telemetry_path exists, use real coordinates from that file.
@@ -66,18 +75,21 @@ def attach_driver_telemetry(df: pd.DataFrame, telemetry_path: str | None = None)
         if path.exists():
             telemetry_df = pd.read_csv(path)
             telemetry_df = _normalize_telemetry_columns(telemetry_df)
-            out['driver_id'] = out['driver_id'].astype(str).str.strip()
+            out['driver_id'] = out['driver_id'].astype(str).str.strip().str.lower()
             out = out.merge(telemetry_df, how='left', on='driver_id')
 
             needs_fallback = out['driver_lat'].isna() | out['driver_lon'].isna()
             if needs_fallback.any():
-                fallback = _fallback_synthetic_telemetry(out.loc[needs_fallback, ['driver_id']].copy())
+                fallback = _fallback_synthetic_telemetry(
+                    out.loc[needs_fallback, ['driver_id']].copy(),
+                    region=fallback_region,
+                )
                 out.loc[needs_fallback, 'driver_lat'] = fallback['driver_lat'].values
                 out.loc[needs_fallback, 'driver_lon'] = fallback['driver_lon'].values
                 out.loc[needs_fallback, 'last_telemetry_utc'] = fallback['last_telemetry_utc'].values
             return out
 
-    return _fallback_synthetic_telemetry(out)
+    return _fallback_synthetic_telemetry(out, region=fallback_region)
 
 
 def attach_external_signals(df: pd.DataFrame) -> pd.DataFrame:
@@ -119,9 +131,10 @@ def build_phase1_operational_view(
     df: pd.DataFrame,
     config: AlertConfig | None = None,
     telemetry_path: str | None = None,
+    fallback_region: str = 'uk',
 ) -> pd.DataFrame:
     """Single entrypoint used by CLI and dashboard for phase-1 operations."""
-    out = attach_driver_telemetry(df, telemetry_path=telemetry_path)
+    out = attach_driver_telemetry(df, telemetry_path=telemetry_path, fallback_region=fallback_region)
     out = attach_external_signals(out)
     out = attach_alerts(out, config=config)
     return out

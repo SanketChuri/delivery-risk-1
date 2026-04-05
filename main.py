@@ -20,7 +20,11 @@ def main():
     inspect_data(df_clean)
 
     df_final = apply_risk_logic(df_clean)
-    ops_df = build_phase1_operational_view(df_final, telemetry_path="data/driver_locations.csv")
+    ops_df = build_phase1_operational_view(
+        df_final,
+        telemetry_path="data/driver_locations.csv",
+        fallback_region="uk",
+    )
 
     print("\n===== FINAL OUTPUT =====")
     print(
