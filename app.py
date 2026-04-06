@@ -10,6 +10,8 @@ from data_cleaning import load_data, clean_data
 from risk_engine import apply_risk_logic
 from phase1 import AlertConfig, build_phase1_operational_view
 
+from llm_agent import generate_ai_brief
+
 
 # ----------------------------
 # Constants
@@ -569,7 +571,7 @@ table_columns = [
     "status",
     "traffic_level",
     "weather_severity",
-    "expected_delivery_time",
+    "expected_delivery_time_min",
     "eta_drift",
     "driver_lat",
     "driver_lon",
@@ -577,6 +579,32 @@ table_columns = [
 ]
 existing_columns = [col for col in table_columns if col in ops_df.columns]
 st.dataframe(ops_df[existing_columns], use_container_width=True)
+
+# ----------------------------
+# AI OPS COPILOT (ADD HERE)
+# ----------------------------
+st.subheader("AI Ops Copilot")
+
+if not ops_df.empty:
+    selectable_jobs = ops_df.sort_values(by=["risk_score"], ascending=False)["job_id"].astype(str).tolist()
+    selected_job_id = st.selectbox("Select a job for AI analysis", selectable_jobs)
+
+    selected_row = ops_df[ops_df["job_id"].astype(str) == selected_job_id].iloc[0]
+
+    if st.button("Generate AI Brief"):
+        with st.spinner("Generating AI brief..."):
+            ai_brief = generate_ai_brief(selected_row)
+
+        st.markdown("### Risk Explanation")
+        st.write(ai_brief.get("risk_explanation", "-"))
+
+        st.markdown("### Recommended Ops Action")
+        st.write(ai_brief.get("ops_recommendation", "-"))
+
+        st.markdown("### Customer Update Draft")
+        st.write(ai_brief.get("customer_message", "-"))
+else:
+    st.info("No jobs available for AI analysis.")
 
 st.subheader("Risk Distribution")
 if not ops_df.empty:

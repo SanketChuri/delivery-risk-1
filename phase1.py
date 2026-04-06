@@ -99,8 +99,8 @@ def attach_external_signals(df: pd.DataFrame) -> pd.DataFrame:
     traffic_factor = out['traffic_level'].map({'low': 1.0, 'medium': 1.1, 'heavy': 1.25}).fillna(1.0)
     out['weather_severity'] = out['traffic_level'].map({'low': 'low', 'medium': 'moderate', 'heavy': 'high'}).fillna('low')
 
-    out['expected_delivery_time'] = (out['scheduled_time'] * traffic_factor).round(1)
-    out['eta_drift'] = (out['expected_delivery_time'] - out['scheduled_time']).round(1)
+    out['expected_delivery_time_min'] = (out['scheduled_time'] * traffic_factor).round(1)
+    out['eta_drift'] = (out['expected_delivery_time_min'] - out['scheduled_time']).round(1)
     return out
 
 

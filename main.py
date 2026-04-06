@@ -34,7 +34,7 @@ def main():
     )
 
     # Only top 3 to avoid API limits
-    top_jobs = ops_df.sort_values(by='risk_score', ascending=False).head(3).copy()
+    top_jobs = ops_df.sort_values(by='risk_score', ascending=False).head(10).copy()
 
     top_jobs['explanation'] = top_jobs.apply(generate_explanation, axis=1)
 
