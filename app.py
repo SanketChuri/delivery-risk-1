@@ -12,6 +12,11 @@ from phase1 import AlertConfig, build_phase1_operational_view
 
 from llm_agent import generate_ai_brief
 
+from batch_optimizer import build_multi_pickup_batches
+
+
+from llm_agent import generate_warehouse_batch_decision
+
 
 # ----------------------------
 # Constants
@@ -298,10 +303,70 @@ ops_df = ops_df[contains_filter(ops_df["job_id"], job_id_search)]
 ops_df = ops_df[contains_filter(ops_df["driver_id"], driver_id_search)]
 
 ops_df = ops_df.sort_values(by=["alert_level", "risk_score", "delay"], ascending=[True, False, False])
+batch_df = build_multi_pickup_batches(ops_df)
 
 urgent_count = int((ops_df["alert_level"] == "urgent").sum())
 high_count = int((ops_df["alert_level"] == "high").sum())
 normal_count = int((ops_df["alert_level"] == "normal").sum())
+
+
+
+# st.subheader("Warehouse Batch Opportunities")
+
+# if not batch_df.empty:
+#     display_cols = [
+#         "batch_id",
+#         "jobs",
+#         "batch_size",
+#         "route_order",
+#         "avg_risk_score",
+#         "max_delay",
+#         "priority_score",
+#         "batch_type",
+#         "batch_note",
+#     ]
+#     st.dataframe(batch_df[display_cols], use_container_width=True)
+# else:
+#     st.info("No same-pickup warehouse batches found.")
+
+# from llm_agent import generate_batch_decision
+display_cols = [
+    "batch_id",
+    "jobs",
+    "batch_size",
+    "route_order",
+    "pickup_zone_center",
+    "drop_zone_center",
+    "avg_risk_score",
+    "max_delay",
+    "batch_type",
+    "batch_note",
+]
+
+# keep only columns that actually exist
+display_cols = [col for col in display_cols if col in batch_df.columns]
+
+st.dataframe(batch_df[display_cols], use_container_width=True)
+
+st.subheader("AI Batch Copilot")
+
+if not batch_df.empty:
+    batch_options = batch_df["batch_id"].tolist()
+    selected_batch_id = st.selectbox("Select batch candidate", batch_options)
+    selected_batch = batch_df[batch_df["batch_id"] == selected_batch_id].iloc[0]
+
+    if st.button("Generate Batch AI Decision"):
+        with st.spinner("Evaluating batch decision..."):
+            batch_ai = generate_batch_decision(selected_batch)
+
+        st.markdown("### Decision")
+        st.write(batch_ai.get("decision", "-"))
+
+        st.markdown("### Reason")
+        st.write(batch_ai.get("reason", "-"))
+
+        st.markdown("### Ops Recommendation")
+        st.write(batch_ai.get("ops_recommendation", "-"))
 
 c1, c2, c3 = st.columns(3)
 c1.metric("Urgent alerts", urgent_count)
@@ -585,26 +650,44 @@ st.dataframe(ops_df[existing_columns], use_container_width=True)
 # ----------------------------
 st.subheader("AI Ops Copilot")
 
-if not ops_df.empty:
-    selectable_jobs = ops_df.sort_values(by=["risk_score"], ascending=False)["job_id"].astype(str).tolist()
-    selected_job_id = st.selectbox("Select a job for AI analysis", selectable_jobs)
+# if not ops_df.empty:
+#     selectable_jobs = ops_df.sort_values(by=["risk_score"], ascending=False)["job_id"].astype(str).tolist()
+#     selected_job_id = st.selectbox("Select a job for AI analysis", selectable_jobs)
 
-    selected_row = ops_df[ops_df["job_id"].astype(str) == selected_job_id].iloc[0]
+#     selected_row = ops_df[ops_df["job_id"].astype(str) == selected_job_id].iloc[0]
 
-    if st.button("Generate AI Brief"):
-        with st.spinner("Generating AI brief..."):
-            ai_brief = generate_ai_brief(selected_row)
+#     if st.button("Generate AI Brief"):
+#         with st.spinner("Generating AI brief..."):
+#             ai_brief = generate_ai_brief(selected_row)
 
-        st.markdown("### Risk Explanation")
-        st.write(ai_brief.get("risk_explanation", "-"))
+#         st.markdown("### Risk Explanation")
+#         st.write(ai_brief.get("risk_explanation", "-"))
 
-        st.markdown("### Recommended Ops Action")
-        st.write(ai_brief.get("ops_recommendation", "-"))
+#         st.markdown("### Recommended Ops Action")
+#         st.write(ai_brief.get("ops_recommendation", "-"))
 
-        st.markdown("### Customer Update Draft")
-        st.write(ai_brief.get("customer_message", "-"))
-else:
-    st.info("No jobs available for AI analysis.")
+#         st.markdown("### Customer Update Draft")
+#         st.write(ai_brief.get("customer_message", "-"))
+# else:
+#     st.info("No jobs available for AI analysis.")
+st.subheader("AI Warehouse Batch Copilot")
+
+if not batch_df.empty:
+    selected_batch_id = st.selectbox("Select warehouse batch", batch_df["batch_id"].tolist())
+    selected_batch = batch_df[batch_df["batch_id"] == selected_batch_id].iloc[0]
+
+    if st.button("Generate Warehouse Batch AI Decision"):
+        with st.spinner("Evaluating batch..."):
+            batch_ai = generate_warehouse_batch_decision(selected_batch)
+
+        st.markdown("### Decision")
+        st.write(batch_ai.get("decision", "-"))
+
+        st.markdown("### Reason")
+        st.write(batch_ai.get("reason", "-"))
+
+        st.markdown("### Ops Recommendation")
+        st.write(batch_ai.get("ops_recommendation", "-"))
 
 st.subheader("Risk Distribution")
 if not ops_df.empty:
